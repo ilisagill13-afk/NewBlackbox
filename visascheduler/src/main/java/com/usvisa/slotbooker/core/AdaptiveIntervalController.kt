@@ -30,6 +30,12 @@ class AdaptiveIntervalController(
 
     fun reason(): String = lastReason
 
+    // --- State the AI advisor uses to reason about the next interval ---
+    val budget: Int get() = hourlyBudget
+    fun checksThisHour(now: Long = System.currentTimeMillis()): Int { prune(now); return requestTimes.size }
+    fun consecutiveErrorCount(): Int = consecutiveErrors
+    fun isCoolingDown(now: Long = System.currentTimeMillis()): Boolean = now < cooldownUntil
+
     /** Record what happened on the check that just finished. */
     fun record(outcome: Outcome, now: Long = System.currentTimeMillis()) {
         requestTimes.addLast(now)
@@ -45,8 +51,19 @@ class AdaptiveIntervalController(
         }
     }
 
-    /** Decide how long to wait before the next check. */
-    fun nextDelayMs(now: Long = System.currentTimeMillis()): Long {
+    /** Decide how long to wait before the next check, using the user's preferred cadence. */
+    fun nextDelayMs(now: Long = System.currentTimeMillis()): Long =
+        computeDelay(preferredIntervalMs, "rule-based", now)
+
+    /**
+     * Clamp a delay the AI proposed (in ms) through the same safety logic, so the model sets the
+     * healthy cadence but can never breach the rate-limit floor, the hourly budget, or an active
+     * cooldown/backoff. The safety layer always wins over the AI.
+     */
+    fun clampAiSuggestion(aiMs: Long, now: Long = System.currentTimeMillis()): Long =
+        computeDelay(aiMs, "AI", now)
+
+    private fun computeDelay(targetBase: Long, source: String, now: Long): Long {
         prune(now)
         val floor = maxOf(minIntervalMs, budgetSpacing(), budgetWait(now))
 
@@ -62,9 +79,9 @@ class AdaptiveIntervalController(
             lastReason = "backing off after $consecutiveErrors error(s) → ${fmt(delay)}"
             return jitter(delay)
         }
-        val target = preferredIntervalMs.coerceIn(minIntervalMs, maxIntervalMs)
+        val target = targetBase.coerceIn(minIntervalMs, maxIntervalMs)
         val delay = maxOf(target, floor)
-        lastReason = "healthy — ${requestTimes.size}/$hourlyBudget checks this hour → ${fmt(delay)}"
+        lastReason = "$source cadence — ${requestTimes.size}/$hourlyBudget checks this hour → ${fmt(delay)}"
         return jitter(delay)
     }
 

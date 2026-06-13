@@ -12,6 +12,7 @@
     <string name="hint_min_date">Earliest date (yyyy-MM-dd)</string>
     <string name="hint_max_date">Latest date (yyyy-MM-dd)</string>
     <string name="hint_poll">Poll interval (minutes)</string>
+    <string name="hint_api_key">Anthropic API key (optional — enables AI scheduling)</string>
 
     <string name="action_save">Save</string>
     <string name="action_login">Log in to visa site</string>

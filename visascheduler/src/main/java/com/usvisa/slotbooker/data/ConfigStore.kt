@@ -34,6 +34,7 @@ class ConfigStore(context: Context) {
             .putString(KEY_MIN_DATE, config.minDate)
             .putString(KEY_MAX_DATE, config.maxDate)
             .putInt(KEY_POLL, config.pollIntervalMinutes)
+            .putString(KEY_API_KEY, config.anthropicApiKey)
             .apply()
     }
 
@@ -49,7 +50,8 @@ class ConfigStore(context: Context) {
             ascFacilityId = prefs.getString(KEY_ASC, "") ?: "",
             minDate = prefs.getString(KEY_MIN_DATE, "") ?: "",
             maxDate = prefs.getString(KEY_MAX_DATE, "") ?: "",
-            pollIntervalMinutes = poll
+            pollIntervalMinutes = poll,
+            anthropicApiKey = prefs.getString(KEY_API_KEY, "") ?: ""
         )
     }
 
@@ -63,5 +65,6 @@ class ConfigStore(context: Context) {
         const val KEY_MIN_DATE = "min_date"
         const val KEY_MAX_DATE = "max_date"
         const val KEY_POLL = "poll_minutes"
+        const val KEY_API_KEY = "anthropic_api_key"
     }
 }

@@ -33,6 +33,7 @@ class ConfigActivity : AppCompatActivity() {
         minDateInput.setText(c.minDate)
         maxDateInput.setText(c.maxDate)
         pollInput.setText(c.pollIntervalMinutes.toString())
+        apiKeyInput.setText(c.anthropicApiKey)
     }
 
     private fun save() {
@@ -47,7 +48,8 @@ class ConfigActivity : AppCompatActivity() {
             ascFacilityId = binding.ascInput.text.toString().trim(),
             minDate = binding.minDateInput.text.toString().trim(),
             maxDate = binding.maxDateInput.text.toString().trim(),
-            pollIntervalMinutes = poll.coerceAtLeast(VisaConfig.MIN_POLL_MINUTES)
+            pollIntervalMinutes = poll.coerceAtLeast(VisaConfig.MIN_POLL_MINUTES),
+            anthropicApiKey = binding.apiKeyInput.text.toString().trim()
         )
 
         if (!config.isComplete) {

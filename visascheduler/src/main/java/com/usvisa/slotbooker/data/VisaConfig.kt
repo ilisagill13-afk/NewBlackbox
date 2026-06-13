@@ -12,12 +12,16 @@ data class VisaConfig(
     val ascFacilityId: String, // biometrics/ASC facility; "" if not required
     val minDate: String,       // earliest acceptable date (inclusive)
     val maxDate: String,       // latest acceptable date (inclusive)
-    val pollIntervalMinutes: Int
+    val pollIntervalMinutes: Int,
+    val anthropicApiKey: String // optional; enables the real-AI scheduler when set
 ) {
     val isComplete: Boolean
         get() = locale.isNotBlank() && email.isNotBlank() && password.isNotBlank() &&
                 scheduleId.isNotBlank() && consulateFacilityId.isNotBlank() &&
                 minDate.isNotBlank() && maxDate.isNotBlank() && minDate <= maxDate
+
+    val aiEnabled: Boolean
+        get() = anthropicApiKey.isNotBlank()
 
     companion object {
         /** Enforced floor so we never hammer the site / trip a ban. */

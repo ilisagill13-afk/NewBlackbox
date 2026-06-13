@@ -39,6 +39,22 @@ Your configured interval is treated as the *preferred* healthy cadence (min 2 mi
 scheduler only ever slows down from there for safety, never below the budget. The current
 decision and its reason are shown live in the app and the ongoing notification.
 
+### Optional: real AI scheduling (Claude)
+If you enter an **Anthropic API key** in Config, the next-check interval is decided by **Claude**
+(`claude-opus-4-8`) via the official Anthropic Java SDK (`core/AiIntervalAdvisor.kt`). Each cycle
+the app sends Claude a compact snapshot — checks used this hour, budget, recent outcome, whether a
+slot just appeared, local time, your date window — and Claude returns the seconds to wait plus a
+one-line reason (shown in the log as `AI (Claude): …`).
+
+The rule-based `AdaptiveIntervalController` does **not** go away — it becomes the **safety clamp**:
+Claude's suggestion is always forced back within the rate-limit floor, the hourly budget, and any
+active cooldown/backoff, so the model can never cause a ban. If the API call fails or no key is set,
+the app silently falls back to the rule-based interval. Notes:
+- Calls cost Anthropic API usage and add a little latency per check (effort is set to `low` to keep
+  it fast/cheap); the call is skipped during cooldown/backoff.
+- The API key is stored encrypted (EncryptedSharedPreferences). Embedding a key in a client app is
+  inherently less safe than a server — use a key scoped to this purpose.
+
 ## Configuration (Config screen)
 | Field | Where to find it |
 |-------|------------------|

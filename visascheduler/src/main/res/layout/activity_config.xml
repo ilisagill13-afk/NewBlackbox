@@ -73,6 +73,13 @@
             android:hint="@string/hint_poll"
             android:inputType="number" />
 
+        <EditText
+            android:id="@+id/apiKeyInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/hint_api_key"
+            android:inputType="textPassword" />
+
         <Button
             android:id="@+id/saveButton"
             android:layout_width="match_parent"
