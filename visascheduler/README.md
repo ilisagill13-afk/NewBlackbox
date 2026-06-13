@@ -12,12 +12,23 @@ range you choose, for *your own* existing appointment.
 ## How it works
 1. You log in once through a real, visible WebView (`LoginActivity`) — you solve any
    Cloudflare/CAPTCHA yourself. The session cookie is then reused.
-2. A foreground service (`VisaMonitorService`) keeps an off-screen WebView on the site's origin
-   and polls the available-days/-times JSON endpoints via same-origin `fetch()`
-   (`assets/visa_automation.js`), so requests carry your cookie + CSRF token like the site's own
-   calls.
-3. When a date inside your range appears, it immediately books the earliest time and posts a
-   "Booked!" notification, then stops.
+2. A foreground service (`VisaMonitorService`) loads the appointment page **once**, then keeps an
+   off-screen WebView parked on the site's origin and polls **only** the available-days/-times
+   JSON endpoints via same-origin `fetch()` (`assets/visa_automation.js`). It **never reloads the
+   page** during polling — each check is a tiny XHR that carries your cookie + CSRF token like the
+   site's own calls, so we don't reset our place in line or trigger the heavier page-load limiter.
+3. When a date inside your range appears, it immediately books the earliest time (reusing the
+   session CSRF token, still no reload) and posts a "Booked!" notification, then stops.
+
+## Rate limiting — why the interval matters
+`ais.usvisa-info.com` actively throttles slot checking:
+- Roughly **~48 checks** in a short window start returning empty arrays → a **soft ban (~5 hours)**.
+- Bot-like activity (checking every few seconds, repeated page refreshes) → an **"Access
+  Limitation" lockout up to 72 hours**.
+
+So the app keeps a **per-check interval** (minutes, with an enforced 2-minute floor + random
+jitter + exponential backoff on errors) instead of refreshing the page. Lowering the interval
+toward seconds increases the chance of a ban — keep it at a few minutes.
 
 ## Configuration (Config screen)
 | Field | Where to find it |

@@ -66,7 +66,12 @@ class VisaWebController(
         loadAppointmentPage()
     }
 
-    /** Reloads the appointment page so the CSRF token and origin context are fresh. */
+    /**
+     * Loads the appointment page exactly ONCE, to land on the site origin and capture the
+     * session cookie + CSRF token. We deliberately never reload it during polling: a full page
+     * reload is the heavy request that can reset our place in line and trip the anti-bot limiter.
+     * Reused only on startup and when explicitly recovering after a re-login.
+     */
     suspend fun loadAppointmentPage() = withContext(Dispatchers.Main) {
         val wv = webView ?: return@withContext
         val load = CompletableDeferred<Unit>()
@@ -78,9 +83,12 @@ class VisaWebController(
         if (!loggedIn) throw SessionExpiredException()
     }
 
-    /** Returns the earliest available slot within [VisaConfig.minDate]..[VisaConfig.maxDate], or null. */
+    /**
+     * Returns the earliest available slot within [VisaConfig.minDate]..[VisaConfig.maxDate], or null.
+     * Issues only the lightweight days/times JSON fetch on the already-loaded origin — no page
+     * reload — so each check is a small same-origin XHR, never a reset.
+     */
     suspend fun pollEarliestInRange(): Slot? {
-        loadAppointmentPage()
         val days = fetchDays()
         val target = days.filter { it in config.minDate..config.maxDate }.minOrNull() ?: return null
         val times = fetchTimes(target)
@@ -89,8 +97,8 @@ class VisaWebController(
     }
 
     suspend fun book(slot: Slot): Boolean {
-        // Re-read the page so the booking POST carries a current CSRF token.
-        loadAppointmentPage()
+        // Uses the CSRF token captured at the initial page load. Rails per-session tokens stay
+        // valid for the whole session, so booking needs no page reload either.
         val body = buildBookingBody(slot)
         val resp = JSONObject(call("book", pathPrefix, config.scheduleId, body))
         return resp.optBoolean("ok", false)
