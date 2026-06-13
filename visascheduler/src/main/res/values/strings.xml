@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">Visa Slot Booker</string>
+    <string name="channel_monitor">Slot monitoring</string>
+    <string name="channel_alert">Booking alerts</string>
+
+    <string name="hint_locale">Region/locale (e.g. en-in, en-ca)</string>
+    <string name="hint_email">Account email</string>
+    <string name="hint_password">Account password</string>
+    <string name="hint_schedule">Schedule ID (existing appointment)</string>
+    <string name="hint_consulate">Consulate facility ID</string>
+    <string name="hint_asc">ASC/biometrics facility ID (optional)</string>
+    <string name="hint_min_date">Earliest date (yyyy-MM-dd)</string>
+    <string name="hint_max_date">Latest date (yyyy-MM-dd)</string>
+    <string name="hint_poll">Poll interval (minutes)</string>
+    <string name="hint_api_key">Anthropic API key (optional — enables AI scheduling)</string>
+
+    <string name="action_save">Save</string>
+    <string name="action_login">Log in to visa site</string>
+    <string name="action_config">Configure</string>
+    <string name="action_done">Done</string>
+</resources>
