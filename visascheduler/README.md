@@ -26,9 +26,18 @@ range you choose, for *your own* existing appointment.
 - Bot-like activity (checking every few seconds, repeated page refreshes) → an **"Access
   Limitation" lockout up to 72 hours**.
 
-So the app keeps a **per-check interval** (minutes, with an enforced 2-minute floor + random
-jitter + exponential backoff on errors) instead of refreshing the page. Lowering the interval
-toward seconds increases the chance of a ban — keep it at a few minutes.
+So instead of a fixed refresh, an **adaptive scheduler decides each next-check time**
+(`core/AdaptiveIntervalController.kt`). It:
+- enforces a **safe hourly budget** (~40 checks/hour, a margin under the soft-ban threshold) and
+  waits out the window if the budget is spent;
+- **checks as fast as the budget allows** while everything is healthy (to catch the earliest slot);
+- **cools down** (30 min, doubling on repeats) when the site returns a hard rate-limit signal
+  (HTTP 429/403), and **backs off** exponentially on transient errors;
+- adds **random jitter** so the cadence isn't robotic.
+
+Your configured interval is treated as the *preferred* healthy cadence (min 2 minutes); the
+scheduler only ever slows down from there for safety, never below the budget. The current
+decision and its reason are shown live in the app and the ongoing notification.
 
 ## Configuration (Config screen)
 | Field | Where to find it |

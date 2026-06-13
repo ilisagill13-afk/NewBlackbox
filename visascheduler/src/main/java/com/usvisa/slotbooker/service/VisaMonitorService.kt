@@ -4,6 +4,8 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.IBinder
+import com.usvisa.slotbooker.core.AdaptiveIntervalController
+import com.usvisa.slotbooker.core.RateLimitException
 import com.usvisa.slotbooker.core.SessionExpiredException
 import com.usvisa.slotbooker.core.VisaWebController
 import com.usvisa.slotbooker.data.ConfigStore
@@ -16,7 +18,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 /**
  * Foreground service that polls the visa site on an interval and auto-books the first slot found
@@ -61,12 +62,17 @@ class VisaMonitorService : Service() {
             return
         }
 
-        var consecutiveErrors = 0
+        val scheduler = AdaptiveIntervalController(
+            preferredIntervalMs = config.pollIntervalMinutes
+                .coerceAtLeast(VisaConfig.MIN_POLL_MINUTES) * 60_000L
+        )
         while (scope.isActive) {
+            var outcome = AdaptiveIntervalController.Outcome.NO_SLOT
             try {
                 MonitorState.setStatus("Checking…")
                 val slot = web.pollEarliestInRange()
                 if (slot != null) {
+                    outcome = AdaptiveIntervalController.Outcome.SLOT_FOUND
                     MonitorState.append("Slot found: ${slot.date} ${slot.time} — booking…")
                     val booked = web.book(slot)
                     if (booked) {
@@ -84,20 +90,32 @@ class VisaMonitorService : Service() {
                     }
                 } else {
                     MonitorState.append("No slot in range yet.")
-                    MonitorState.setStatus("Watching (last check: no slot)")
                 }
-                consecutiveErrors = 0
             } catch (e: SessionExpiredException) {
                 notifyRelogin()
                 stopSelf()
                 return
+            } catch (e: RateLimitException) {
+                outcome = AdaptiveIntervalController.Outcome.RATE_LIMIT
+                MonitorState.append("Rate-limit signal from the site.")
             } catch (e: Exception) {
-                consecutiveErrors++
+                outcome = AdaptiveIntervalController.Outcome.ERROR
                 MonitorState.append("Error: ${e.message}")
             }
 
-            delay(nextDelayMillis(config, consecutiveErrors))
+            scheduler.record(outcome)
+            val delayMs = scheduler.nextDelayMs()
+            val reason = scheduler.reason()
+            MonitorState.setStatus("Next check: $reason")
+            MonitorState.append("AI scheduler: $reason")
+            updateOngoing(reason)
+            delay(delayMs)
         }
+    }
+
+    private fun updateOngoing(text: String) {
+        getSystemService(android.app.NotificationManager::class.java)
+            ?.notify(Notifications.ONGOING_ID, Notifications.ongoing(this, text))
     }
 
     private fun notifyRelogin() {
@@ -108,15 +126,6 @@ class VisaMonitorService : Service() {
             "Login required",
             "Your visa session expired. Open the app and log in again to resume monitoring."
         )
-    }
-
-    /** Interval with jitter; exponential backoff (capped) after consecutive errors. */
-    private fun nextDelayMillis(config: VisaConfig, errors: Int): Long {
-        val baseMin = config.pollIntervalMinutes.coerceAtLeast(VisaConfig.MIN_POLL_MINUTES)
-        val base = baseMin * 60_000L
-        val backoff = if (errors > 0) minOf(1L shl errors, 8L) else 1L
-        val jitter = Random.nextLong(0, 30_000)
-        return base * backoff + jitter
     }
 
     override fun onDestroy() {

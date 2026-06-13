@@ -136,6 +136,7 @@ class VisaWebController(
     private fun handleError(resp: JSONObject): Nothing {
         val err = resp.optString("error")
         if (err.contains("SESSION_EXPIRED")) throw SessionExpiredException()
+        if (err.contains("HTTP 429") || err.contains("HTTP 403")) throw RateLimitException()
         throw IllegalStateException("Request failed: $err")
     }
 
