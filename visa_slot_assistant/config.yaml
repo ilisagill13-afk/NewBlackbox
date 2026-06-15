@@ -1,0 +1,21 @@
+ais:
+  base_url: "https://ais.usvisa-info.com/en-ca/niv"
+  facility_id: 94        # 89=Calgary, 90=Ottawa, 91=Montreal, 92=Halifax, 94=Toronto, 99=Vancouver
+  schedule_id: ""        # Auto-extracted after first login
+
+preferences:
+  earliest_date: "2026-07-01"
+  latest_date: "2026-12-31"
+  poll_interval_seconds: 30
+  heartbeat_interval_seconds: 120
+  auto_book: true        # false = only notify, user books manually
+
+notifications:
+  telegram:
+    enabled: true
+    bot_token: ""        # From @BotFather on Telegram
+    chat_id: ""          # Your Telegram chat ID (use @userinfobot to find it)
+
+logging:
+  level: "INFO"
+  file: "logs/visa_assistant.log"

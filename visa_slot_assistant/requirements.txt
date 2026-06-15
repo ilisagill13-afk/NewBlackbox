@@ -1,0 +1,11 @@
+playwright==1.56.1
+aiohttp==3.9.5
+aiofiles==23.2.1
+aiosqlite==0.20.0
+PyYAML==6.0.1
+python-dotenv==1.0.1
+python-telegram-bot==21.6
+tenacity==8.3.0
+rich==13.7.1
+loguru==0.7.2
+cryptography==41.0.7
