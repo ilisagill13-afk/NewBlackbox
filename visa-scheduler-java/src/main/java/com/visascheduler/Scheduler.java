@@ -3,7 +3,6 @@ package com.visascheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -135,7 +134,7 @@ public class Scheduler {
         throw new RuntimeException("Could not log in after 3 attempts.");
     }
 
-    private boolean checkAndBook() throws IOException {
+    private boolean checkAndBook() throws Exception {
         log.info("Fetching available dates …");
         List<String> dates = client.getAvailableDates();
 
@@ -162,10 +161,27 @@ public class Scheduler {
         }
 
         String time = times.get(0);
-        log.info("Will attempt to book {} at {} …", date, time);
 
+        // ── NOTIFY_ONLY mode: tell the user, let THEM book manually ───────────
+        // This is the safest mode — booking automation (the riskiest part for
+        // account flags) is never triggered. You get the alert and book by hand
+        // in your own logged-in browser within a couple of minutes.
+        if (Config.NOTIFY_ONLY) {
+            log.info("NOTIFY_ONLY=true — sending alert, NOT auto-booking.");
+            Notifier.notify("Visa Slot Available — Book Now!",
+                    "A slot opened: " + date + " at " + time + " — "
+                            + titleCase(Config.CONSULATE) + " consulate.\n\n"
+                            + "Log in to https://ais.usvisa-info.com/" + Config.COUNTRY_CODE
+                            + "/niv and book it yourself NOW — slots disappear within minutes.");
+            // Treat as "done" for this run so we don't spam the same slot repeatedly.
+            // Remove this `return true` if you want to keep polling/alerting until
+            // the slot disappears from the available-dates list.
+            return true;
+        }
+
+        log.info("Will attempt to auto-book {} at {} …", date, time);
         Notifier.notify("Visa Slot Found!",
-                "Booking " + date + " at " + time + " — " + titleCase(Config.CONSULATE) + " consulate.");
+                "Auto-booking " + date + " at " + time + " — " + titleCase(Config.CONSULATE) + " consulate.");
 
         // beforeBooking delay is inside bookAppointment
         boolean success = client.bookAppointment(date, time);

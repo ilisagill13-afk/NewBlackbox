@@ -19,3 +19,9 @@
 .cxx
 local.properties
 /app/release/
+
+# visa-scheduler-java (Maven + sensitive session files)
+visa-scheduler-java/target/
+visa-scheduler-java/cookies.json
+visa-scheduler-java/browser_state.json
+visa-scheduler-java/visa_scheduler*.log

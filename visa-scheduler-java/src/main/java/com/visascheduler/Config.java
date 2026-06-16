@@ -84,6 +84,16 @@ public final class Config {
     /** Max consecutive errors before giving up entirely. */
     public static final int MAX_RETRIES = Integer.parseInt(env("MAX_RETRIES", "10"));
 
+    /**
+     * NOTIFY_ONLY = true  → bot only detects slots and sends a notification;
+     *                        YOU manually book in your real browser.
+     *                        SAFEST option — booking automation is never triggered.
+     *
+     * NOTIFY_ONLY = false → bot detects AND auto-books (riskier).
+     */
+    public static final boolean NOTIFY_ONLY =
+            Boolean.parseBoolean(env("NOTIFY_ONLY", "true"));
+
     // ── URLs ─────────────────────────────────────────────────────────────────
     public static final String BASE_URL = "https://ais.usvisa-info.com";
 

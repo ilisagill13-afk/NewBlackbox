@@ -25,17 +25,26 @@ public class Main {
 
     public static void main(String[] args) {
         log.info("╔══════════════════════════════════════════════╗");
-        log.info("║   US Visa Slot Scheduler — Canada  v1.0.0   ║");
+        log.info("║   US Visa Slot Scheduler — Canada  v2.0.0   ║");
         log.info("╚══════════════════════════════════════════════╝");
         log.info("Consulate        : {}", Config.CONSULATE);
         log.info("Facility ID      : {}", Config.FACILITY_ID);
         log.info("Current appt     : {}", Config.CURRENT_APPOINTMENT_DATE);
         log.info("Earliest ok      : {}", Config.EARLIEST_DATE);
+        log.info("Mode             : {}", Config.NOTIFY_ONLY
+                ? "NOTIFY_ONLY (safest — you book manually)"
+                : "AUTO_BOOK (bot books for you — higher risk)");
         log.info("Poll interval    : {}–{}s (random)", Config.POLL_MIN_SECONDS, Config.POLL_MAX_SECONDS);
         log.info("Daily cap        : {} polls", Config.MAX_DAILY_POLLS);
         log.info("Business hrs only: {}", Config.BUSINESS_HOURS_ONLY);
         log.info("Consulate TZ     : {}", Config.CONSULATE_TIMEZONE);
+        log.info("Headless browser : {}", Config.HEADLESS);
         log.info("Notifications    : {}", Config.NOTIFY_METHOD);
+
+        if (Config.NOTIFY_ONLY && Config.NOTIFY_METHOD.equalsIgnoreCase("none")) {
+            log.warn("NOTIFY_ONLY=true but NOTIFY_METHOD=none — you will not be "
+                    + "alerted when a slot opens! Set NOTIFY_METHOD=telegram or email.");
+        }
 
         Runtime.getRuntime().addShutdownHook(new Thread(() ->
                 log.info("Scheduler stopped.")));
