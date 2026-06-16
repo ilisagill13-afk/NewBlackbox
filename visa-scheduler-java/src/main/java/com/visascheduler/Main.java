@@ -27,12 +27,15 @@ public class Main {
         log.info("╔══════════════════════════════════════════════╗");
         log.info("║   US Visa Slot Scheduler — Canada  v1.0.0   ║");
         log.info("╚══════════════════════════════════════════════╝");
-        log.info("Consulate   : {}", Config.CONSULATE);
-        log.info("Facility ID : {}", Config.FACILITY_ID);
-        log.info("Current appt: {}", Config.CURRENT_APPOINTMENT_DATE);
-        log.info("Earliest ok : {}", Config.EARLIEST_DATE);
-        log.info("Poll every  : {}s", Config.POLL_INTERVAL_SECONDS);
-        log.info("Notifications: {}", Config.NOTIFY_METHOD);
+        log.info("Consulate        : {}", Config.CONSULATE);
+        log.info("Facility ID      : {}", Config.FACILITY_ID);
+        log.info("Current appt     : {}", Config.CURRENT_APPOINTMENT_DATE);
+        log.info("Earliest ok      : {}", Config.EARLIEST_DATE);
+        log.info("Poll interval    : {}–{}s (random)", Config.POLL_MIN_SECONDS, Config.POLL_MAX_SECONDS);
+        log.info("Daily cap        : {} polls", Config.MAX_DAILY_POLLS);
+        log.info("Business hrs only: {}", Config.BUSINESS_HOURS_ONLY);
+        log.info("Consulate TZ     : {}", Config.CONSULATE_TIMEZONE);
+        log.info("Notifications    : {}", Config.NOTIFY_METHOD);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() ->
                 log.info("Scheduler stopped.")));

@@ -5,75 +5,118 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Core polling loop.
+ * Core polling loop with account-safety measures:
  *
- * <ol>
- *   <li>Logs in to AIS with retry.</li>
- *   <li>Polls for available dates every {@link Config#POLL_INTERVAL_SECONDS} seconds.</li>
- *   <li>Filters dates to those earlier than the current appointment and no sooner than
- *       the user's earliest acceptable date.</li>
- *   <li>Books the earliest qualifying slot.</li>
- *   <li>Sends notifications on success or terminal failure.</li>
- * </ol>
+ *  1. Random poll interval (POLL_MIN_SECONDS – POLL_MAX_SECONDS) — no fixed pattern.
+ *  2. Business-hours-only mode — no off-hours requests.
+ *  3. Daily poll cap (MAX_DAILY_POLLS) — limits total daily requests.
+ *  4. Exponential back-off on errors / rate-limits.
+ *  5. Re-authentication only when actually needed (auth error detected).
  */
 public class Scheduler {
 
     private static final Logger log = LoggerFactory.getLogger(Scheduler.class);
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
+    // Business hours: 09:00 – 17:00 local consulate time
+    private static final LocalTime BUSINESS_START = LocalTime.of(9, 0);
+    private static final LocalTime BUSINESS_END   = LocalTime.of(17, 0);
+
     private final AisClient client;
     private final LocalDate currentAppointment;
     private final LocalDate earliestDate;
+    private final ZoneId    consulateZone;
+
     private int consecutiveErrors = 0;
+    private int dailyPollCount    = 0;
+    private LocalDate lastPollDate = LocalDate.MIN;
 
     public Scheduler() {
         this.client             = new AisClient();
         this.currentAppointment = LocalDate.parse(Config.CURRENT_APPOINTMENT_DATE, DATE_FMT);
         this.earliestDate       = LocalDate.parse(Config.EARLIEST_DATE, DATE_FMT);
+        this.consulateZone      = ZoneId.of(Config.CONSULATE_TIMEZONE);
     }
 
     // ── Entry point ───────────────────────────────────────────────────────────
 
     public void run() {
-        log.info("Starting US Visa Slot Scheduler for Canada — consulate: {} (ID {})",
+        log.info("Starting US Visa Slot Scheduler — consulate: {} (ID {})",
                 Config.CONSULATE, Config.FACILITY_ID);
-        log.info("Target: slot earlier than {}, no sooner than {}",
+        log.info("Want slot earlier than {}, no sooner than {}",
                 currentAppointment, earliestDate);
+        log.info("Poll range: {}–{}s | daily cap: {} | business hours only: {}",
+                Config.POLL_MIN_SECONDS, Config.POLL_MAX_SECONDS,
+                Config.MAX_DAILY_POLLS, Config.BUSINESS_HOURS_ONLY);
 
         loginWithRetry();
 
         while (true) {
+            // ── Business hours gate ───────────────────────────────────────────
+            if (Config.BUSINESS_HOURS_ONLY && !isBusinessHours()) {
+                long waitMs = secondsUntilBusinessHours() * 1000L;
+                log.info("Outside business hours — sleeping until 09:00 {} (~{}min)",
+                        Config.CONSULATE_TIMEZONE, waitMs / 60_000);
+                sleep(waitMs);
+                continue;
+            }
+
+            // ── Daily cap gate ────────────────────────────────────────────────
+            resetDailyCounterIfNewDay();
+            if (dailyPollCount >= Config.MAX_DAILY_POLLS) {
+                log.info("Daily poll cap ({}) reached — sleeping until midnight.",
+                        Config.MAX_DAILY_POLLS);
+                sleep(secondsUntilMidnight() * 1000L);
+                continue;
+            }
+
+            // ── Poll ──────────────────────────────────────────────────────────
             try {
+                dailyPollCount++;
+                log.info("Poll #{} (today) …", dailyPollCount);
                 boolean booked = checkAndBook();
                 consecutiveErrors = 0;
                 if (booked) break;
+
             } catch (Exception e) {
                 consecutiveErrors++;
-                log.error("Poll error ({}/{}): {}", consecutiveErrors, Config.MAX_RETRIES,
-                        e.getMessage());
+                String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                log.error("Poll error ({}/{}): {}", consecutiveErrors, Config.MAX_RETRIES, msg);
 
                 if (consecutiveErrors >= Config.MAX_RETRIES) {
-                    String msg = "Scheduler stopped after " + Config.MAX_RETRIES
-                            + " consecutive errors. Last: " + e.getMessage();
-                    log.error(msg);
-                    Notifier.notify("Visa Scheduler — STOPPED", msg);
+                    String alert = "Scheduler stopped after " + Config.MAX_RETRIES
+                            + " consecutive errors. Last: " + msg;
+                    log.error(alert);
+                    Notifier.notify("Visa Scheduler — STOPPED", alert);
                     break;
                 }
 
-                // Re-authenticate on auth errors
-                String err = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
-                if (err.contains("401") || err.contains("403") || err.contains("sign_in")) {
+                // Re-login only on auth errors
+                String lower = msg.toLowerCase();
+                if (lower.contains("401") || lower.contains("403") || lower.contains("sign_in")
+                        || lower.contains("login failed")) {
                     log.info("Auth error detected — re-logging in …");
                     loginWithRetry();
                 }
+
+                // Exponential back-off on rate-limit responses
+                if (lower.contains("429") || lower.contains("too many")) {
+                    log.warn("Rate-limit hit — applying back-off …");
+                    HumanDelay.backoff(consecutiveErrors);
+                    continue;
+                }
             }
 
-            sleep(Config.POLL_INTERVAL_SECONDS);
+            // ── Random interval before next poll ──────────────────────────────
+            HumanDelay.pollInterval(Config.POLL_MIN_SECONDS, Config.POLL_MAX_SECONDS);
         }
     }
 
@@ -86,80 +129,99 @@ public class Scheduler {
                 return;
             } catch (Exception e) {
                 log.error("Login attempt {} failed: {}", attempt, e.getMessage());
-                if (attempt < 3) sleep(5 * attempt);
+                if (attempt < 3) HumanDelay.backoff(attempt);
             }
         }
         throw new RuntimeException("Could not log in after 3 attempts.");
     }
 
     private boolean checkAndBook() throws IOException {
-        log.info("Checking available dates …");
+        log.info("Fetching available dates …");
         List<String> dates = client.getAvailableDates();
 
         if (dates.isEmpty()) {
-            log.info("No slots available right now.");
+            log.info("No slots available.");
             return false;
         }
-
-        log.info("Available dates returned: {}", dates.subList(0, Math.min(10, dates.size())));
+        log.info("Dates returned: {}", dates.subList(0, Math.min(10, dates.size())));
 
         Optional<String> best = pickBestDate(dates);
         if (best.isEmpty()) {
-            log.info("No dates meet the criteria (earlier than {}, at or after {}).",
-                    currentAppointment, earliestDate);
+            log.info("No date qualifies (need {} ≤ date < {}).", earliestDate, currentAppointment);
             return false;
         }
 
         String date = best.get();
-        log.info("Best available date: {} — fetching time slots …", date);
+        log.info("Best qualifying date: {} — fetching times …", date);
 
+        // betweenRequests delay is inside getAvailableTimes
         List<String> times = client.getAvailableTimes(date);
         if (times.isEmpty()) {
-            log.info("No time slots available for {}.", date);
+            log.info("No time slots for {}.", date);
             return false;
         }
 
         String time = times.get(0);
-        log.info("Attempting to book {} at {} …", date, time);
+        log.info("Will attempt to book {} at {} …", date, time);
 
         Notifier.notify("Visa Slot Found!",
-                "Attempting to book " + date + " at " + time
-                        + " at " + titleCase(Config.CONSULATE) + " consulate.");
+                "Booking " + date + " at " + time + " — " + titleCase(Config.CONSULATE) + " consulate.");
 
+        // beforeBooking delay is inside bookAppointment
         boolean success = client.bookAppointment(date, time);
 
         if (success) {
-            String msg = "Successfully booked US visa appointment!\n"
-                    + "Date: " + date + "\n"
-                    + "Time: " + time + "\n"
-                    + "Consulate: " + titleCase(Config.CONSULATE) + ", Canada";
+            String msg = "US visa appointment booked!\nDate: " + date
+                    + "\nTime: " + time + "\nConsulate: " + titleCase(Config.CONSULATE) + ", Canada";
             log.info(msg);
-            Notifier.notify("Visa Appointment Booked!", msg);
+            Notifier.notify("Appointment Booked!", msg);
             return true;
         }
 
-        log.warn("Booking failed for {} {} — will retry next poll.", date, time);
-        Notifier.notify("Booking Attempt Failed",
-                "Could not book " + date + " at " + time + ". Will try again.");
+        log.warn("Booking attempt for {} {} failed — will retry next poll.", date, time);
+        Notifier.notify("Booking Failed", "Could not book " + date + " at " + time + ". Retrying.");
         return false;
     }
 
     private Optional<String> pickBestDate(List<String> available) {
         return available.stream()
-                .map(s -> {
-                    try { return LocalDate.parse(s, DATE_FMT); }
-                    catch (Exception e) { return null; }
-                })
-                .filter(d -> d != null
-                        && !d.isBefore(earliestDate)
-                        && d.isBefore(currentAppointment))
+                .map(s -> { try { return LocalDate.parse(s, DATE_FMT); } catch (Exception e) { return null; } })
+                .filter(d -> d != null && !d.isBefore(earliestDate) && d.isBefore(currentAppointment))
                 .min(LocalDate::compareTo)
                 .map(d -> d.format(DATE_FMT));
     }
 
-    private void sleep(int seconds) {
-        log.info("Sleeping {}s before next poll …", seconds);
-        try { Thread.sleep(seconds * 1000L); }
+    // ── Time / scheduling helpers ─────────────────────────────────────────────
+
+    private boolean isBusinessHours() {
+        LocalTime now = ZonedDateTime.now(consulateZone).toLocalTime();
+        return !now.isBefore(BUSINESS_START) && now.isBefore(BUSINESS_END);
+    }
+
+    private long secondsUntilBusinessHours() {
+        ZonedDateTime now  = ZonedDateTime.now(consulateZone);
+        ZonedDateTime open = now.toLocalDate().atTime(BUSINESS_START).atZone(consulateZone);
+        if (now.isAfter(open)) open = open.plusDays(1);           // tomorrow's opening
+        return java.time.Duration.between(now, open).getSeconds() + 60; // +1 min buffer
+    }
+
+    private long secondsUntilMidnight() {
+        ZonedDateTime now      = ZonedDateTime.now(consulateZone);
+        ZonedDateTime midnight = now.toLocalDate().plusDays(1)
+                .atStartOfDay(consulateZone);
+        return java.time.Duration.between(now, midnight).getSeconds() + 60;
+    }
+
+    private void resetDailyCounterIfNewDay() {
+        LocalDate today = ZonedDateTime.now(consulateZone).toLocalDate();
+        if (!today.equals(lastPollDate)) {
+            dailyPollCount = 0;
+            lastPollDate   = today;
+        }
+    }
+
+    private void sleep(long ms) {
+        try { Thread.sleep(ms); }
         catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
     }
 

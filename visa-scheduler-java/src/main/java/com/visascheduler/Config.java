@@ -1,5 +1,6 @@
 package com.visascheduler;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -15,12 +16,11 @@ public final class Config {
     public static final String AIS_PASSWORD = env("AIS_PASSWORD", "your_password");
 
     // ── Appointment Details ───────────────────────────────────────────────────
-    /** Country/language segment in the URL (Canada = en-ca) */
     public static final String COUNTRY_CODE = "en-ca";
 
     /**
-     * Consulate city key. Valid values:
-     * calgary, halifax, montreal, ottawa, quebec_city, toronto, vancouver, victoria
+     * Consulate city key.
+     * Options: calgary, halifax, montreal, ottawa, quebec_city, toronto, vancouver, victoria
      */
     public static final String CONSULATE = env("CONSULATE", "toronto");
 
@@ -34,24 +34,54 @@ public final class Config {
             "vancouver",    95,
             "victoria",     96
     );
-
     public static final int FACILITY_ID = FACILITY_IDS.getOrDefault(CONSULATE, 94);
 
-    /**
-     * Your current appointment date (YYYY-MM-DD).
-     * The scheduler will only book a slot EARLIER than this date.
-     */
+    /** The scheduler only books a slot EARLIER than this date (YYYY-MM-DD). */
     public static final String CURRENT_APPOINTMENT_DATE =
             env("CURRENT_APPOINTMENT_DATE", "2026-12-31");
 
     /** Earliest date you are willing to attend (YYYY-MM-DD). */
     public static final String EARLIEST_DATE = env("EARLIEST_DATE", "2026-06-17");
 
-    // ── Scheduling ────────────────────────────────────────────────────────────
-    /** Seconds to wait between polls. Keep >= 30 to respect rate limits. */
-    public static final int POLL_INTERVAL_SECONDS =
-            Integer.parseInt(env("POLL_INTERVAL_SECONDS", "60"));
+    // ── Scheduling / Rate-limiting ────────────────────────────────────────────
 
+    /**
+     * Minimum seconds to wait between polls.
+     * Default 90 — never go below 60 to avoid triggering rate limits.
+     */
+    public static final int POLL_MIN_SECONDS =
+            Integer.parseInt(env("POLL_MIN_SECONDS", "90"));
+
+    /**
+     * Maximum seconds to wait between polls.
+     * A random value in [POLL_MIN_SECONDS, POLL_MAX_SECONDS] is chosen each cycle.
+     */
+    public static final int POLL_MAX_SECONDS =
+            Integer.parseInt(env("POLL_MAX_SECONDS", "180"));
+
+    /**
+     * Maximum number of polling rounds per calendar day.
+     * Prevents runaway polling (≤ 200 keeps daily requests reasonable).
+     */
+    public static final int MAX_DAILY_POLLS =
+            Integer.parseInt(env("MAX_DAILY_POLLS", "150"));
+
+    /**
+     * If true, only poll during local business hours (09:00 – 17:00 in the
+     * consulate's timezone). Appointment slots typically only open during office
+     * hours anyway, so off-hours polling just wastes requests.
+     */
+    public static final boolean BUSINESS_HOURS_ONLY =
+            Boolean.parseBoolean(env("BUSINESS_HOURS_ONLY", "true"));
+
+    /**
+     * Timezone used for the business-hours check.
+     * Use IANA zone IDs, e.g. "America/Toronto", "America/Vancouver".
+     */
+    public static final String CONSULATE_TIMEZONE =
+            env("CONSULATE_TIMEZONE", "America/Toronto");
+
+    /** Max consecutive errors before giving up entirely. */
     public static final int MAX_RETRIES = Integer.parseInt(env("MAX_RETRIES", "10"));
 
     // ── URLs ─────────────────────────────────────────────────────────────────
@@ -89,11 +119,23 @@ public final class Config {
     public static final String SMTP_PASSWORD   = env("SMTP_PASSWORD",   "");
     public static final String NOTIFY_EMAIL_TO = env("NOTIFY_EMAIL_TO", "");
 
-    // ── Browser / Request ─────────────────────────────────────────────────────
-    public static final String USER_AGENT =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            + "AppleWebKit/537.36 (KHTML, like Gecko) "
-            + "Chrome/125.0.0.0 Safari/537.36";
+    // ── Browser fingerprint ───────────────────────────────────────────────────
+    /**
+     * Pool of realistic Chrome User-Agent strings.
+     * One is picked at random for each poll cycle so the UA rotates naturally.
+     */
+    public static final List<String> USER_AGENTS = List.of(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    + "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    + "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                    + "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 "
+                    + "(KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) "
+                    + "Gecko/20100101 Firefox/126.0"
+    );
 
     // ── Helper ────────────────────────────────────────────────────────────────
     private static String env(String key, String defaultValue) {
