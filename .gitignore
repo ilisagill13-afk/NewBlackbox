@@ -25,3 +25,10 @@ visa-scheduler-java/target/
 visa-scheduler-java/cookies.json
 visa-scheduler-java/browser_state.json
 visa-scheduler-java/visa_scheduler*.log
+
+# visa-scheduler-macro (Maven + calibration/screenshot artifacts)
+visa-scheduler-macro/target/
+visa-scheduler-macro/calibration.properties
+visa-scheduler-macro/baseline.png
+visa-scheduler-macro/alert_*.png
+visa-scheduler-macro/macro_monitor*.log
