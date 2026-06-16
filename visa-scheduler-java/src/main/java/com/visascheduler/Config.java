@@ -119,10 +119,17 @@ public final class Config {
     public static final String SMTP_PASSWORD   = env("SMTP_PASSWORD",   "");
     public static final String NOTIFY_EMAIL_TO = env("NOTIFY_EMAIL_TO", "");
 
-    // ── Browser fingerprint ───────────────────────────────────────────────────
+    // ── Browser / Playwright ──────────────────────────────────────────────────
     /**
-     * Pool of realistic Chrome User-Agent strings.
-     * One is picked at random for each poll cycle so the UA rotates naturally.
+     * Run Chromium in headless mode (true = no visible window).
+     * Set to false for debugging to watch the browser interact with the site.
+     */
+    public static final boolean HEADLESS =
+            Boolean.parseBoolean(env("HEADLESS", "true"));
+
+    /**
+     * Pool of realistic Chrome/Safari/Firefox User-Agent strings.
+     * One is picked at random per browser session.
      */
     public static final List<String> USER_AGENTS = List.of(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
