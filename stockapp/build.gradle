@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId "com.stockmarket.stockpulse"
-        minSdk rootProject.ext.minSdk
+        minSdk 26
         targetSdk rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
