@@ -1,0 +1,79 @@
+name: Build StockPulse APK
+
+on:
+  push:
+    branches:
+      - claude/top-stocks-market-app-y3q38a
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build StockPulse Debug APK
+        run: ./gradlew :stockapp:assembleDebug
+
+      - name: Build StockPulse Release APK
+        run: ./gradlew :stockapp:assembleRelease
+
+      - name: Find APK paths
+        id: apk_paths
+        run: |
+          DEBUG_APK=$(find ./stockapp/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          RELEASE_APK=$(find ./stockapp/build/outputs/apk/release -name "*.apk" | head -n 1)
+          echo "debug_apk=$DEBUG_APK" >> $GITHUB_OUTPUT
+          echo "release_apk=$RELEASE_APK" >> $GITHUB_OUTPUT
+          echo "Debug APK: $DEBUG_APK"
+          echo "Release APK: $RELEASE_APK"
+
+      - name: Upload Debug APK as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: StockPulse-Debug
+          path: stockapp/build/outputs/apk/debug/*.apk
+
+      - name: Upload Release APK as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: StockPulse-Release
+          path: stockapp/build/outputs/apk/release/*.apk
+
+      - name: Send Debug APK to Telegram
+        if: env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          curl -s -F document=@"${{ steps.apk_paths.outputs.debug_apk }}" \
+               -F chat_id="$TELEGRAM_CHAT_ID" \
+               -F caption="📈 [StockPulse DEBUG] $COMMIT_MSG" \
+               https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendDocument
+
+      - name: Send Release APK to Telegram
+        if: env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          curl -s -F document=@"${{ steps.apk_paths.outputs.release_apk }}" \
+               -F chat_id="$TELEGRAM_CHAT_ID" \
+               -F caption="📈 [StockPulse RELEASE] $COMMIT_MSG" \
+               https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendDocument
