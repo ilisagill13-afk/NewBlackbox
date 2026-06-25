@@ -25,6 +25,7 @@ import top.niunaijun.blackboxa.view.base.LoadingActivity
 import top.niunaijun.blackboxa.view.fake.FakeManagerActivity
 import top.niunaijun.blackboxa.view.list.ListActivity
 import top.niunaijun.blackboxa.view.setting.SettingActivity
+import top.niunaijun.blackboxa.view.stock.StockActivity
 
 class MainActivity : LoadingActivity() {
 
@@ -402,6 +403,9 @@ class MainActivity : LoadingActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         try {
             when (item.itemId) {
+                R.id.stock_market -> {
+                    StockActivity.start(this)
+                }
                 R.id.main_git -> {
                     val intent =
                             Intent(

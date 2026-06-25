@@ -4,6 +4,11 @@
 
 
     <item
+            android:id="@+id/stock_market"
+            android:title="@string/stock_market"
+            app:showAsAction="never" />
+
+    <item
             android:id="@+id/main_setting"
             android:title="@string/setting"
             app:showAsAction="never" />

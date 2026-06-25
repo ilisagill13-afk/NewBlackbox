@@ -95,4 +95,20 @@ dependencies {
     
     implementation 'androidx.work:work-runtime:2.7.1'
 
+    // Retrofit + OkHttp for stock API
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.9.3'
+
+    // Coroutines
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
+
+    // SwipeRefreshLayout
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+
+    // CardView
+    implementation 'androidx.cardview:cardview:1.0.0'
+
 }
