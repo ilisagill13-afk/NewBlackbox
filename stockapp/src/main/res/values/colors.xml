@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_dark">#121212</color>
+    <color name="bg_card">#1E1E1E</color>
+    <color name="bg_surface">#0D0D0D</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#9E9E9E</color>
+    <color name="gain_green">#00C853</color>
+    <color name="loss_red">#FF1744</color>
+    <color name="accent_gold">#FFD600</color>
+    <color name="divider">#2C2C2C</color>
+    <color name="white">#FFFFFF</color>
+    <color name="rank_bg">#2C2C2C</color>
+</resources>

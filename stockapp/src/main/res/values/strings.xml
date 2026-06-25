@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StockPulse</string>
+    <string name="day_gainers">Day Gainers</string>
+    <string name="most_active">Most Active</string>
+    <string name="growth_tech">Growth Tech</string>
+    <string name="loading">Loading market data…</string>
+    <string name="no_data">No data available.\nMarket may be closed.\nPull down to refresh.</string>
+    <string name="stock_detail">Stock Detail</string>
+</resources>
