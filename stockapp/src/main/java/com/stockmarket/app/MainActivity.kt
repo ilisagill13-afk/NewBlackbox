@@ -19,6 +19,8 @@ import com.stockmarket.app.portfolio.PortfolioManager
 import com.stockmarket.app.repository.StockRepository
 import com.stockmarket.app.ui.adapter.StockAdapter
 import com.stockmarket.app.ui.detail.StockDetailActivity
+import com.stockmarket.app.util.NotificationHelper
+import com.stockmarket.app.util.RiskGuardian
 import com.stockmarket.app.viewmodel.StockViewModel
 
 class MainActivity : AppCompatActivity() {
@@ -56,6 +58,7 @@ class MainActivity : AppCompatActivity() {
             PortfolioActivity.start(this)
         }
 
+        NotificationHelper.createChannels(this)
         vm.load(StockViewModel.Tab.DAY_GAINERS)
     }
 
@@ -102,20 +105,56 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("stockpulse_portfolio", Context.MODE_PRIVATE)
         val portfolio = PortfolioManager.get(prefs)
 
+        val risk = RiskGuardian.assess(sig, portfolio.totalCurrentValue, portfolio.cashBalance)
+
+        // Block purchase if risk is too high
+        if (!risk.approved) {
+            val warnings = risk.warnings.joinToString("\n• ", prefix = "• ")
+            AlertDialog.Builder(this)
+                .setTitle("❌ Purchase Blocked")
+                .setMessage(
+                    "Risk assessment: ${risk.riskLevel.label}\n\n" +
+                    "This stock is too risky to buy right now:\n$warnings\n\n" +
+                    "Wait for a better setup with a higher signal score."
+                )
+                .setPositiveButton("OK", null)
+                .show()
+            return
+        }
+
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_buy, null)
         val tvInfo = view.findViewById<TextView>(R.id.tv_buy_info)
         val etAmount = view.findViewById<EditText>(R.id.et_invest_amount)
         val tvCash = view.findViewById<TextView>(R.id.tv_cash_available)
 
-        tvInfo.text = "${sig.stock.symbol} — Current price: $${"%.2f".format(sig.stock.price)}\n" +
-            "Signal: ${sig.recommendation.emoji} ${sig.recommendation.label} (${sig.signalScore}/100)"
+        val maxAmount = portfolio.totalCurrentValue * risk.maxSuggestedPct / 100.0
+        val riskWarnings = if (risk.warnings.isEmpty()) "" else
+            "\n\n⚠ ${risk.warnings.joinToString(" | ")}"
+        val positives = if (risk.positives.isEmpty()) "" else
+            "\n✅ ${risk.positives.take(2).joinToString(" | ")}"
+
+        tvInfo.text = "${sig.stock.symbol} — $${"%.2f".format(sig.stock.price)}\n" +
+            "${sig.recommendation.emoji} ${sig.recommendation.label} (${sig.signalScore}/100)\n" +
+            "Risk: ${risk.riskLevel.label} · Max suggested: $${"%.0f".format(maxAmount)}" +
+            positives + riskWarnings
         tvCash.text = "Available cash: $${"%.2f".format(portfolio.cashBalance)}"
 
         AlertDialog.Builder(this)
             .setTitle("💰 Buy ${sig.stock.symbol}")
             .setView(view)
-            .setPositiveButton("Buy") { _, _ ->
+            .setPositiveButton("Confirm Buy") { _, _ ->
                 val amount = etAmount.text.toString().toDoubleOrNull() ?: return@setPositiveButton
+                if (amount > maxAmount * 1.5) {
+                    AlertDialog.Builder(this)
+                        .setTitle("⚠ Position Too Large")
+                        .setMessage(
+                            "Investing $${"%.0f".format(amount)} exceeds the suggested max of $${"%.0f".format(maxAmount)} " +
+                            "for this risk level (${risk.riskLevel.label}).\n\nReduce the amount to protect your portfolio."
+                        )
+                        .setPositiveButton("OK", null)
+                        .show()
+                    return@setPositiveButton
+                }
                 val result = PortfolioManager.buyStock(
                     prefs, sig.stock.symbol, sig.stock.displayName,
                     sig.stock.price, amount
@@ -123,7 +162,10 @@ class MainActivity : AppCompatActivity() {
                 result.onSuccess {
                     AlertDialog.Builder(this)
                         .setTitle("✅ Bought!")
-                        .setMessage("Invested $${"%.2f".format(amount)} in ${sig.stock.symbol}.\n\nView your portfolio to track P&L.")
+                        .setMessage(
+                            "Invested $${"%.2f".format(amount)} in ${sig.stock.symbol}.\n" +
+                            "Stop-loss and take-profit set automatically.\n\nView portfolio to monitor."
+                        )
                         .setPositiveButton("View Portfolio") { _, _ -> PortfolioActivity.start(this) }
                         .setNegativeButton("OK", null)
                         .show()

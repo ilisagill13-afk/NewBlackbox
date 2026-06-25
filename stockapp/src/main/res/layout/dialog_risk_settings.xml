@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Automatic stop-loss and take-profit protect your portfolio from large losses and lock in gains."
+        android:textSize="13sp" android:textColor="#757575" android:layout_marginBottom="20dp" />
+
+    <!-- Stop-Loss -->
+    <TextView android:id="@+id/tv_stop_value" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="Stop-Loss: 3%"
+        android:textSize="15sp" android:textStyle="bold" android:textColor="#FF6F00"
+        android:layout_marginBottom="4dp" />
+
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Auto-sell when price drops this % below buy price"
+        android:textSize="11sp" android:textColor="#9E9E9E" android:layout_marginBottom="6dp" />
+
+    <SeekBar android:id="@+id/sb_stop_loss" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:max="20"
+        android:progressTint="#FF6F00" android:thumbTint="#FF6F00"
+        android:layout_marginBottom="20dp" />
+
+    <!-- Take-Profit -->
+    <TextView android:id="@+id/tv_tp_value" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="Take-Profit: 10%"
+        android:textSize="15sp" android:textStyle="bold" android:textColor="#00C853"
+        android:layout_marginBottom="4dp" />
+
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Auto-sell and lock in gains when price rises this %"
+        android:textSize="11sp" android:textColor="#9E9E9E" android:layout_marginBottom="6dp" />
+
+    <SeekBar android:id="@+id/sb_take_profit" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:max="50"
+        android:progressTint="#00C853" android:thumbTint="#00C853"
+        android:layout_marginBottom="20dp" />
+
+    <!-- Trailing Stop -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical">
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="📈 Trailing Stop-Loss" android:textSize="15sp"
+                android:textStyle="bold" android:textColor="#212121" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="Stop rises automatically as price climbs — locks in profits"
+                android:textSize="11sp" android:textColor="#9E9E9E" />
+        </LinearLayout>
+
+        <Switch android:id="@+id/sw_trailing_stop"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:checked="true" />
+    </LinearLayout>
+
+</LinearLayout>

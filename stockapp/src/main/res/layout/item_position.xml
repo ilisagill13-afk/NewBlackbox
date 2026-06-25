@@ -55,8 +55,29 @@
                 android:textColor="@color/text_secondary" android:text="Now: $0.00" />
         </LinearLayout>
 
+        <View android:layout_width="match_parent" android:layout_height="1dp"
+            android:background="@color/divider" android:layout_marginTop="8dp"
+            android:layout_marginBottom="6dp" />
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView android:id="@+id/tv_pos_stop_loss" android:layout_width="0dp"
+                android:layout_height="wrap_content" android:layout_weight="1"
+                android:textSize="11sp" android:textColor="#FF6F00"
+                android:text="🛑 Stop: $0.00" />
+            <TextView android:id="@+id/tv_pos_take_profit" android:layout_width="0dp"
+                android:layout_height="wrap_content" android:layout_weight="1"
+                android:gravity="end" android:textSize="11sp" android:textColor="#00C853"
+                android:text="🎯 Target: $0.00" />
+        </LinearLayout>
+
+        <TextView android:id="@+id/tv_pos_risk_status" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:textSize="11sp" android:textStyle="bold"
+            android:text="✅ Protected" />
+
         <Button android:id="@+id/btn_sell" android:layout_width="match_parent"
-            android:layout_height="36dp" android:layout_marginTop="10dp"
+            android:layout_height="36dp" android:layout_marginTop="8dp"
             android:text="Sell Position" android:textSize="13sp"
             android:backgroundTint="@color/divider" android:textColor="@color/white" />
 

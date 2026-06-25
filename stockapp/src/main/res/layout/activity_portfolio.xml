@@ -73,15 +73,30 @@
                         </LinearLayout>
                     </LinearLayout>
 
-                    <Button android:id="@+id/btn_deposit"
-                        android:layout_width="match_parent" android:layout_height="48dp"
-                        android:layout_marginTop="16dp" android:text="💰 Add Funds"
-                        android:textSize="15sp" android:textStyle="bold"
-                        android:backgroundTint="@color/gain_green"
-                        android:textColor="@color/white" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:layout_marginTop="12dp">
+                        <Button android:id="@+id/btn_deposit"
+                            android:layout_width="0dp" android:layout_height="48dp"
+                            android:layout_weight="1" android:layout_marginEnd="6dp"
+                            android:text="💰 Add Funds" android:textSize="14sp" android:textStyle="bold"
+                            android:backgroundTint="@color/gain_green" android:textColor="@color/white" />
+                        <Button android:id="@+id/btn_risk_settings"
+                            android:layout_width="0dp" android:layout_height="48dp"
+                            android:layout_weight="1" android:layout_marginStart="6dp"
+                            android:text="🛡 Risk Settings" android:textSize="14sp" android:textStyle="bold"
+                            android:backgroundTint="#1E3A5F" android:textColor="@color/white" />
+                    </LinearLayout>
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
+
+            <!-- At-Risk Alert -->
+            <TextView android:id="@+id/tv_at_risk"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:padding="12dp" android:layout_marginBottom="10dp"
+                android:textSize="13sp" android:textStyle="bold"
+                android:background="#1A2A00" android:visibility="gone"
+                android:text="⚠ Positions at risk" />
 
             <!-- Positions -->
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
