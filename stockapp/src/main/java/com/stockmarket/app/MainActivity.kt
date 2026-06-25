@@ -7,7 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.tabs.TabLayout
 import com.stockmarket.app.databinding.ActivityMainBinding
-import com.stockmarket.app.model.Stock
+import com.stockmarket.app.model.TechnicalSignal
 import com.stockmarket.app.repository.StockRepository
 import com.stockmarket.app.ui.adapter.StockAdapter
 import com.stockmarket.app.ui.detail.StockDetailActivity
@@ -24,14 +24,16 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
+        supportActionBar?.title = "StockPulse"
+        supportActionBar?.subtitle = "Technical Analysis Scanner"
 
-        adapter = StockAdapter { stock -> openDetail(stock) }
+        adapter = StockAdapter { sig -> openDetail(sig) }
         binding.recyclerView.adapter = adapter
 
         vm = ViewModelProvider(this, StockViewModel.Factory(StockRepository()))[StockViewModel::class.java]
 
-        observeVm()
         setupTabs()
+        observeVm()
 
         binding.swipeRefresh.setOnRefreshListener { vm.refresh() }
         binding.swipeRefresh.setColorSchemeColors(
@@ -46,13 +48,11 @@ class MainActivity : AppCompatActivity() {
         StockViewModel.Tab.values().forEach { tab ->
             binding.tabLayout.addTab(binding.tabLayout.newTab().setText(tab.label))
         }
-
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
-                val vmTab = StockViewModel.Tab.values().getOrElse(tab?.position ?: 0) {
+                vm.load(StockViewModel.Tab.values().getOrElse(tab?.position ?: 0) {
                     StockViewModel.Tab.DAY_GAINERS
-                }
-                vm.load(vmTab)
+                })
             }
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
             override fun onTabReselected(tab: TabLayout.Tab?) { vm.refresh() }
@@ -60,12 +60,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun observeVm() {
-        vm.stocks.observe(this) { stocks ->
-            adapter.submitList(stocks)
-            binding.tvEmpty.visibility = if (stocks.isEmpty()) View.VISIBLE else View.GONE
-            binding.recyclerView.visibility = if (stocks.isNotEmpty()) View.VISIBLE else View.GONE
-            if (stocks.isNotEmpty()) {
-                binding.tvStatus.text = "${stocks.size} stocks • Swipe to refresh"
+        vm.signals.observe(this) { signals ->
+            adapter.submitList(signals)
+            val hasData = signals.isNotEmpty()
+            binding.recyclerView.visibility = if (hasData) View.VISIBLE else View.GONE
+            binding.tvEmpty.visibility = if (!hasData) View.VISIBLE else View.GONE
+            if (hasData) {
+                binding.tvStatus.text = "${signals.size} strong signals • Pull to refresh"
             }
         }
 
@@ -74,33 +75,47 @@ class MainActivity : AppCompatActivity() {
             binding.swipeRefresh.isRefreshing = false
         }
 
+        vm.loadingMsg.observe(this) { msg ->
+            if (vm.loading.value == true) binding.tvStatus.text = msg
+        }
+
         vm.error.observe(this) { err ->
             if (err != null) {
                 binding.tvEmpty.visibility = View.VISIBLE
                 binding.tvEmpty.text = err
-                binding.tvStatus.text = "Unable to load data"
+                binding.tvStatus.text = "No data"
             }
         }
     }
 
-    private fun openDetail(stock: Stock) {
-        val intent = Intent(this, StockDetailActivity::class.java).apply {
-            putExtra(StockDetailActivity.EXTRA_SYMBOL, stock.symbol)
-            putExtra(StockDetailActivity.EXTRA_NAME, stock.displayName)
-            putExtra(StockDetailActivity.EXTRA_PRICE, stock.price)
-            putExtra(StockDetailActivity.EXTRA_CHANGE_PCT, stock.changePercent)
-            putExtra(StockDetailActivity.EXTRA_CHANGE, stock.change)
-            putExtra(StockDetailActivity.EXTRA_VOLUME, stock.volume)
-            putExtra(StockDetailActivity.EXTRA_MARKET_CAP, stock.marketCap)
-            putExtra(StockDetailActivity.EXTRA_DAY_HIGH, stock.dayHigh)
-            putExtra(StockDetailActivity.EXTRA_DAY_LOW, stock.dayLow)
-            putExtra(StockDetailActivity.EXTRA_52W_HIGH, stock.high52w)
-            putExtra(StockDetailActivity.EXTRA_52W_LOW, stock.low52w)
-            putExtra(StockDetailActivity.EXTRA_MA50, stock.ma50)
-            putExtra(StockDetailActivity.EXTRA_MA200, stock.ma200)
-            putExtra(StockDetailActivity.EXTRA_MOMENTUM, stock.momentumScore)
-            putExtra(StockDetailActivity.EXTRA_STRENGTH, stock.strengthLabel)
-        }
-        startActivity(intent)
+    private fun openDetail(sig: TechnicalSignal) {
+        startActivity(Intent(this, StockDetailActivity::class.java).apply {
+            putExtra(StockDetailActivity.KEY, sig.stock.symbol)
+            putExtra("name", sig.stock.displayName)
+            putExtra("price", sig.stock.price)
+            putExtra("change_pct", sig.stock.changePercent)
+            putExtra("change", sig.stock.change)
+            putExtra("volume", sig.stock.volume)
+            putExtra("mktcap", sig.stock.marketCap)
+            putExtra("day_high", sig.stock.dayHigh)
+            putExtra("day_low", sig.stock.dayLow)
+            putExtra("w52_high", sig.stock.high52w)
+            putExtra("w52_low", sig.stock.low52w)
+            putExtra("ma50", sig.stock.ma50)
+            putExtra("ma200", sig.stock.ma200)
+            putExtra("rsi", sig.rsi)
+            putExtra("macd_line", sig.macdLine)
+            putExtra("macd_signal", sig.macdSignal)
+            putExtra("macd_hist", sig.macdHistogram)
+            putExtra("macd_bullish", sig.macdBullish)
+            putExtra("ema9", sig.ema9)
+            putExtra("ema21", sig.ema21)
+            putExtra("ema_bullish", sig.emaCrossoverBullish)
+            putExtra("vol_ratio", sig.volumeRatio)
+            putExtra("vol_surge", sig.volumeSurge)
+            putExtra("score", sig.signalScore)
+            putExtra("rec", sig.recommendation.name)
+            putExtra("consec_days", sig.consecutiveGainDays)
+        })
     }
 }
