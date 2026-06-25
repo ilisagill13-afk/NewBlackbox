@@ -49,13 +49,13 @@ jobs:
           echo "Release APK: $RELEASE_APK"
 
       - name: Upload Debug APK as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: StockPulse-Debug
           path: stockapp/build/outputs/apk/debug/*.apk
 
       - name: Upload Release APK as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: StockPulse-Release
           path: stockapp/build/outputs/apk/release/*.apk
