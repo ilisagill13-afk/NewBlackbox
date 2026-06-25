@@ -1,13 +1,21 @@
 package com.stockmarket.app
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
+import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.tabs.TabLayout
 import com.stockmarket.app.databinding.ActivityMainBinding
 import com.stockmarket.app.model.TechnicalSignal
+import com.stockmarket.app.portfolio.PortfolioActivity
+import com.stockmarket.app.portfolio.PortfolioManager
 import com.stockmarket.app.repository.StockRepository
 import com.stockmarket.app.ui.adapter.StockAdapter
 import com.stockmarket.app.ui.detail.StockDetailActivity
@@ -27,7 +35,10 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.title = "StockPulse"
         supportActionBar?.subtitle = "Technical Analysis Scanner"
 
-        adapter = StockAdapter { sig -> openDetail(sig) }
+        adapter = StockAdapter(
+            onClick = { sig -> openDetail(sig) },
+            onBuy = { sig -> showBuyDialog(sig) }
+        )
         binding.recyclerView.adapter = adapter
 
         vm = ViewModelProvider(this, StockViewModel.Factory(StockRepository()))[StockViewModel::class.java]
@@ -40,6 +51,10 @@ class MainActivity : AppCompatActivity() {
             getColor(R.color.gain_green),
             getColor(R.color.accent_gold)
         )
+
+        binding.btnPortfolio.setOnClickListener {
+            PortfolioActivity.start(this)
+        }
 
         vm.load(StockViewModel.Tab.DAY_GAINERS)
     }
@@ -65,20 +80,15 @@ class MainActivity : AppCompatActivity() {
             val hasData = signals.isNotEmpty()
             binding.recyclerView.visibility = if (hasData) View.VISIBLE else View.GONE
             binding.tvEmpty.visibility = if (!hasData) View.VISIBLE else View.GONE
-            if (hasData) {
-                binding.tvStatus.text = "${signals.size} strong signals • Pull to refresh"
-            }
+            if (hasData) binding.tvStatus.text = "${signals.size} strong signals • Pull to refresh"
         }
-
         vm.loading.observe(this) { loading ->
             binding.progressBar.visibility = if (loading) View.VISIBLE else View.GONE
             binding.swipeRefresh.isRefreshing = false
         }
-
         vm.loadingMsg.observe(this) { msg ->
             if (vm.loading.value == true) binding.tvStatus.text = msg
         }
-
         vm.error.observe(this) { err ->
             if (err != null) {
                 binding.tvEmpty.visibility = View.VISIBLE
@@ -86,6 +96,47 @@ class MainActivity : AppCompatActivity() {
                 binding.tvStatus.text = "No data"
             }
         }
+    }
+
+    private fun showBuyDialog(sig: TechnicalSignal) {
+        val prefs = getSharedPreferences("stockpulse_portfolio", Context.MODE_PRIVATE)
+        val portfolio = PortfolioManager.get(prefs)
+
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_buy, null)
+        val tvInfo = view.findViewById<TextView>(R.id.tv_buy_info)
+        val etAmount = view.findViewById<EditText>(R.id.et_invest_amount)
+        val tvCash = view.findViewById<TextView>(R.id.tv_cash_available)
+
+        tvInfo.text = "${sig.stock.symbol} — Current price: $${"%.2f".format(sig.stock.price)}\n" +
+            "Signal: ${sig.recommendation.emoji} ${sig.recommendation.label} (${sig.signalScore}/100)"
+        tvCash.text = "Available cash: $${"%.2f".format(portfolio.cashBalance)}"
+
+        AlertDialog.Builder(this)
+            .setTitle("💰 Buy ${sig.stock.symbol}")
+            .setView(view)
+            .setPositiveButton("Buy") { _, _ ->
+                val amount = etAmount.text.toString().toDoubleOrNull() ?: return@setPositiveButton
+                val result = PortfolioManager.buyStock(
+                    prefs, sig.stock.symbol, sig.stock.displayName,
+                    sig.stock.price, amount
+                )
+                result.onSuccess {
+                    AlertDialog.Builder(this)
+                        .setTitle("✅ Bought!")
+                        .setMessage("Invested $${"%.2f".format(amount)} in ${sig.stock.symbol}.\n\nView your portfolio to track P&L.")
+                        .setPositiveButton("View Portfolio") { _, _ -> PortfolioActivity.start(this) }
+                        .setNegativeButton("OK", null)
+                        .show()
+                }.onFailure {
+                    AlertDialog.Builder(this)
+                        .setTitle("⚠ Failed")
+                        .setMessage(it.message ?: "Purchase failed")
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun openDetail(sig: TechnicalSignal) {

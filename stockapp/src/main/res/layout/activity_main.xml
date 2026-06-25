@@ -13,7 +13,20 @@
         android:background="@color/bg_dark"
         android:elevation="4dp"
         app:titleTextColor="@color/white"
-        app:subtitleTextColor="@color/accent_gold" />
+        app:subtitleTextColor="@color/accent_gold">
+
+        <Button
+            android:id="@+id/btn_portfolio"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_gravity="end"
+            android:layout_marginEnd="12dp"
+            android:text="💼 Portfolio"
+            android:textSize="12sp"
+            android:backgroundTint="@color/gain_green"
+            android:textColor="@color/white" />
+
+    </androidx.appcompat.widget.Toolbar>
 
     <!-- Header Banner -->
     <LinearLayout

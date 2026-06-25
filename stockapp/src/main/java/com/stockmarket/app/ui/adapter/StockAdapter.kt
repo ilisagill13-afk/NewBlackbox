@@ -14,7 +14,8 @@ import com.stockmarket.app.model.TechnicalSignal
 import kotlin.math.abs
 
 class StockAdapter(
-    private val onClick: (TechnicalSignal) -> Unit
+    private val onClick: (TechnicalSignal) -> Unit,
+    private val onBuy: (TechnicalSignal) -> Unit
 ) : ListAdapter<TechnicalSignal, StockAdapter.VH>(DIFF) {
 
     companion object {
@@ -99,6 +100,7 @@ class StockAdapter(
             b.tvVolume.setTextColor(if (sig.volumeSurge) COLOR_YELLOW else COLOR_GRAY)
 
             b.root.setOnClickListener { onClick(sig) }
+            b.btnBuy.setOnClickListener { onBuy(sig) }
         }
     }
 
