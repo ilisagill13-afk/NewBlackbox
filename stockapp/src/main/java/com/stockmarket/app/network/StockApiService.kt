@@ -7,15 +7,13 @@ import retrofit2.http.Headers
 import retrofit2.http.Path
 import retrofit2.http.Query
 
-private val BROWSER_HEADERS = arrayOf(
-    "User-Agent: Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 Chrome/105.0",
-    "Accept: application/json, */*",
-    "Accept-Language: en-US,en;q=0.9"
-)
-
 interface StockApiService {
 
-    @Headers(*BROWSER_HEADERS)
+    @Headers(
+        "User-Agent: Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 Chrome/105.0",
+        "Accept: application/json, */*",
+        "Accept-Language: en-US,en;q=0.9"
+    )
     @GET("v1/finance/screener/predefined/saved")
     suspend fun getScreener(
         @Query("formatted") formatted: Boolean = false,
@@ -25,7 +23,11 @@ interface StockApiService {
         @Query("corsDomain") domain: String = "finance.yahoo.com"
     ): StockResponse
 
-    @Headers(*BROWSER_HEADERS)
+    @Headers(
+        "User-Agent: Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 Chrome/105.0",
+        "Accept: application/json, */*",
+        "Accept-Language: en-US,en;q=0.9"
+    )
     @GET("v8/finance/chart/{symbol}")
     suspend fun getChart(
         @Path("symbol") symbol: String,
