@@ -32,6 +32,12 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
+      - name: Remove Aliyun mirrors (unavailable outside China)
+        run: |
+          sed -i '/maven.aliyun.com/d' settings.gradle
+          echo "settings.gradle after removing Aliyun:"
+          cat settings.gradle
+
       - name: Build StockPulse Debug APK
         run: ./gradlew :stockapp:assembleDebug
 
